@@ -1,9 +1,9 @@
-// Replace these placeholders with Firebase Console -> Project settings -> Your apps -> Web app.
 export const firebaseConfig = {
-  apiKey: "PASTE_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
-  messagingSenderId: "PASTE_SENDER_ID",
-  appId: "PASTE_APP_ID"
+  apiKey: "AIzaSyA372fKFRuLfEe074hygczvJGYQQ4JxPAk",
+  authDomain: "teachme-97d7b.firebaseapp.com",
+  projectId: "teachme-97d7b",
+  storageBucket: "teachme-97d7b.firebasestorage.app",
+  messagingSenderId: "186759229055",
+  appId: "1:186759229055:web:62e6917314bf2d38fb994a",
+  measurementId: "G-29BQ5E1N47"
 };
