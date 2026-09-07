@@ -1,8 +1,33 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TeachMe</title><link rel="stylesheet" href="style.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body><header><b>TeachMe</b><nav><button data-v="home">Home</button><button data-v="courses">Courses</button><button data-v="dashboard">Dashboard</button><button id="teacherNav" data-v="teacher" hidden>Teacher</button><button id="authNav" data-v="auth">Login</button><button id="logout" hidden>Logout</button></nav></header><main>
-<section id="home" class="view active"><div class="hero"><h1>Learn. Practice. Complete.</h1><p>Learn from courses and earn certificates.</p><button class="primary" data-v="courses">Browse Courses</button></div><div id="homeCourses" class="grid"></div></section>
-<section id="courses" class="view"><h2>Courses</h2><input id="search" placeholder="Search courses..."><div id="courseList" class="grid"></div></section>
-<section id="course" class="view"><div id="courseDetail"></div></section>
-<section id="lesson" class="view"><div id="lessonDetail"></div></section>
-<section id="dashboard" class="view"><h2>My Dashboard</h2><div id="dash"></div></section>
-<section id="teacher" class="view"><h2>Teacher Dashboard</h2><div class="panel"><h3>Create course</h3><input id="ct" placeholder="Title"><input id="cc" placeholder="Category"><input id="cl" placeholder="Level"><textarea id="cd" placeholder="Description"></textarea><label><input id="cp" type="checkbox"> Published</label><button class="primary" id="create">Create</button></div><div id="teacherCourses"></div></section>
-<section id="auth" class="view"><div class="auth"><div><button id="loginTab">Login</button><button id="signupTab">Sign up</button></div><form id="login"><input id="ln" required placeholder="Name"><input id="lp" required type="password" placeholder="Password"><button class="primary">Login</button></form><form id="signup" hidden><input id="sn" required placeholder="Name"><input id="sp" required type="password" placeholder="Password"><button class="primary">Create account</button></form><p id="msg"></p></div></section></main><script src="script.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TeachMe</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<header>
+  <div class="brand">TeachMe</div>
+  <nav>
+    <button data-page="home">Home</button>
+    <button data-page="courses">Courses</button>
+    <button data-page="dashboard">Dashboard</button>
+    <button id="teacherNav" data-page="teacher" hidden>Teacher</button>
+    <button id="authNav" data-page="auth">Login</button>
+    <button id="logoutBtn" hidden>Logout</button>
+  </nav>
+</header>
+<main>
+<section id="home" class="page active"><div class="hero"><h1>Learn. Practice. Achieve.</h1><p>Online classroom learning with your progress saved securely.</p><button class="primary" data-page="courses">Browse courses</button></div></section>
+<section id="courses" class="page"><h2>Courses</h2><input id="courseSearch" placeholder="Search courses..."><div id="courseList" class="grid"></div></section>
+<section id="dashboard" class="page"><h2>My Dashboard</h2><div id="dashboardContent"></div></section>
+<section id="teacher" class="page"><h2>Teacher Dashboard</h2><div id="teacherContent"></div></section>
+<section id="auth" class="page"><div class="authbox"><h2 id="authTitle">Login</h2><div id="authMessage"></div><input id="username" autocomplete="username" placeholder="Username"><input id="password" type="password" autocomplete="current-password" placeholder="Password"><button id="authSubmit" class="primary">Login</button><p><button id="toggleAuth" class="link">Create a student account</button></p></div></section>
+<section id="courseView" class="page"><button class="link" data-page="courses">← Back to courses</button><div id="courseDetails"></div></section>
+</main>
+<div id="toast"></div>
+<script src="script.js"></script>
+</body>
+</html>
