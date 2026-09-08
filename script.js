@@ -1,43 +1,445 @@
-const SUPABASE_URL="https://yaomfytqplxazovmpsir.supabase.co";
-const SUPABASE_KEY="sb_publishable_UNSBaO_CuU4YMBJ_gklv5g_9hcWfTdE";
-const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-const TEACHER_USERNAME="TeachMe";
-let user=null,profile=null,authMode="login";
+(() => {
+"use strict";
 
-const $=id=>document.getElementById(id);
-const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const email=u=>String(u||"").trim().toLowerCase().replace(/[^a-z0-9]+/g,".")+"@accounts.teachme.local";
-const toast=m=>{let t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(window.tt);window.tt=setTimeout(()=>t.style.display="none",3200)};
+const SUPABASE_URL = "https://yaomfytqplxazovmpsir.supabase.co";
+const SUPABASE_KEY = "sb_publishable_UNSBaO_CUu4YMBJ_gklv5g_9hcWfTdE";
+const TEACHER_USERNAME = "TeachMe";
 
-function showPage(id){document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));$(id)?.classList.add("active");scrollTo(0,0);if(id==="courses")loadCourses();if(id==="dashboard")loadDashboard();if(id==="teacher")loadTeacher()}
-document.querySelectorAll("[data-page]").forEach(x=>x.onclick=()=>showPage(x.dataset.page));
+let db = null;
+let user = null;
+let profile = null;
+let authMode = "login";
+let currentCourse = null;
 
-async function refreshAuth(){const {data:{session}}=await db.auth.getSession();user=session?.user||null;profile=null;if(user){const r=await db.from("profiles").select("*").eq("id",user.id).maybeSingle();profile=r.data||null}$("authNav").textContent=user?(profile?.name||"Account"):"Login";$("logoutBtn").hidden=!user;$("teacherNav").hidden=profile?.role!=="teacher"}
-db.auth.onAuthStateChange(()=>setTimeout(refreshAuth,0));
-$("logoutBtn").onclick=async()=>{await db.auth.signOut();await refreshAuth();showPage("home");toast("Logged out.")};
+const $ = id => document.getElementById(id);
+const toast = msg => {
+  const el = $("toast");
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = "block";
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(() => el.style.display = "none", 3500);
+};
 
-function setAuthMode(m){authMode=m;$("authTitle").textContent=m==="login"?"Login":"Create student account";$("authSub").textContent=m==="login"?"Welcome back. Enter your account details.":"Create your account to start learning.";$("authSubmit").textContent=m==="login"?"Login":"Create account";$("toggleAuth").textContent=m==="login"?"Create a student account":"Back to login";$("realNameWrap").hidden=m==="login"}
-$("toggleAuth").onclick=()=>setAuthMode(authMode==="login"?"signup":"login");
-$("authSubmit").onclick=async()=>{let u=$("username").value.trim(),p=$("password").value;if(!u||!p)return toast("Enter a username and password.");if(authMode==="signup"){if(u.toLowerCase()===TEACHER_USERNAME.toLowerCase())return toast("That username is reserved.");if(p.length<6)return toast("Password must be at least 6 characters.");let r=await db.auth.signUp({email:email(u),password:p,options:{data:{display_name:u,real_name:$("realName").value.trim()||u}}});if(r.error)return toast(r.error.message);if(r.data.user){await db.from("profiles").upsert({id:r.data.user.id,name:$("realName").value.trim()||u,role:"student"});await refreshAuth();showPage("courses");toast("Account created.")}}else{let r=await db.auth.signInWithPassword({email:email(u),password:p});if(r.error)return toast(r.error.message);await refreshAuth();showPage(profile?.role==="teacher"?"teacher":"courses");toast("Welcome back.")}};
+const esc = (s="") => String(s).replace(/[&<>"']/g, c =>
+  ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
 
-async function loadCourses(){let box=$("courseList"),q=$("courseSearch")?.value.trim()||"";let req=db.from("courses").select("*").eq("published",true).order("created_at",{ascending:false});if(q)req=req.ilike("title",`%${q}%`);let r=await req;if(r.error)return box.innerHTML=`<div class="empty danger">${esc(r.error.message)}</div>`;box.innerHTML=(r.data||[]).map(c=>`<article class="card"><span class="badge published">Published</span><h3>${esc(c.title)}</h3><p>${esc(c.description||"No description yet.")}</p><div class="card-actions"><button class="primary" onclick="openCourse('${c.id}')">View course</button></div></article>`).join("")||`<div class="empty">No published courses found.</div>`}
-$("courseSearch")?.addEventListener("input",loadCourses);
+function slug(s) {
+  return String(s).toLowerCase().trim()
+    .replace(/[^a-z0-9]+/g, ".")
+    .replace(/^\.+|\.+$/g, "");
+}
+function syntheticEmail(username) {
+  return slug(username) + "@accounts.teachme.local";
+}
 
-window.openCourse=async id=>{let r=await db.from("courses").select("*").eq("id",id).single();if(r.error)return toast(r.error.message);let c=r.data,l=(await db.from("lessons").select("*").eq("course_id",id).order("position")).data||[],enrolled=false;if(user)enrolled=!!(await db.from("enrollments").select("id").eq("course_id",id).eq("student_id",user.id).maybeSingle()).data;$("courseDetails").innerHTML=`<div class="course-head"><span class="eyebrow">COURSE</span><h1>${esc(c.title)}</h1><p class="muted">${esc(c.description||"")}</p>${!user?`<button class="primary" onclick="showPage('auth')">Login to enroll</button>`:enrolled?`<span class="badge published">✓ Enrolled</span>`:`<button class="primary" onclick="enroll('${id}')">Enroll in course</button>`}</div><h2>Lessons</h2>${l.map((x,i)=>`<article class="lesson"><span class="badge">Lesson ${i+1}</span><h3>${esc(x.title)}</h3><p class="muted">${esc(x.description||"")}</p>${x.video_url?`<video controls preload="metadata" src="${esc(x.video_url)}" onended="markProgress('${x.id}')"></video>`:`<p class="muted">No video uploaded.</p>`}${enrolled?`<button class="secondary" onclick="markProgress('${x.id}')">Mark lesson complete</button>`:""}</article>`).join("")||`<div class="empty">No lessons have been added yet.</div>`;showPage("courseView")};
-window.enroll=async id=>{if(!user)return showPage("auth");let r=await db.from("enrollments").insert({course_id:id,student_id:user.id});if(r.error)return toast(r.error.message);toast("Enrolled successfully.");openCourse(id)};
-window.markProgress=async lessonId=>{if(!user)return;let r=await db.from("progress").upsert({student_id:user.id,lesson_id:lessonId,completed:true,completed_at:new Date().toISOString()},{onConflict:"student_id,lesson_id"});if(r.error)return toast(r.error.message);toast("Progress saved.")};
+function showPage(id) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  const page = $(id);
+  if (!page) return;
+  page.classList.add("active");
+  window.scrollTo({top:0,behavior:"smooth"});
+  if (id === "courses") loadCourses();
+  if (id === "dashboard") loadDashboard();
+  if (id === "teacher") loadTeacher();
+}
 
-async function loadDashboard(){let box=$("dashboardContent");if(!user){box.innerHTML=`<div class="empty"><h3>Sign in to see your learning</h3><button class="primary" onclick="showPage('auth')">Login</button></div>`;return}let r=await db.from("enrollments").select("course_id,courses(id,title,description)").eq("student_id",user.id);if(r.error)return box.innerHTML=`<div class="empty danger">${esc(r.error.message)}</div>`;if(!r.data?.length)return box.innerHTML=`<div class="empty"><h3>Your learning library is empty</h3><p>Browse the course library to get started.</p><button class="primary" onclick="showPage('courses')">Browse courses</button></div>`;let cards=[];for(const e of r.data){let ls=(await db.from("lessons").select("id").eq("course_id",e.course_id)).data||[],ids=ls.map(x=>x.id),done=0;if(ids.length)done=((await db.from("progress").select("lesson_id").eq("student_id",user.id).eq("completed",true).in("lesson_id",ids)).data||[]).length;let pct=ids.length?Math.round(done/ids.length*100):0;cards.push(`<article class="card"><span class="badge">${pct}% complete</span><h3>${esc(e.courses.title)}</h3><p>${esc(e.courses.description||"")}</p><div class="progress"><i style="width:${pct}%"></i></div><p class="small">${done} of ${ids.length} lessons completed</p><button class="primary" onclick="openCourse('${e.course_id}')">${pct===100?"Review course":"Continue learning"}</button></article>`)}box.innerHTML=`<div class="grid">${cards.join("")}</div>`}
+async function refreshAuth() {
+  if (!db) return;
+  const {data:{session}, error} = await db.auth.getSession();
+  if (error) console.warn(error);
+  user = session?.user || null;
+  profile = null;
 
-async function loadTeacher(){let box=$("teacherContent");if(profile?.role!=="teacher")return box.innerHTML=`<div class="empty">Teacher access required.</div>`;let r=await db.from("courses").select("*").order("created_at",{ascending:false});if(r.error)return box.innerHTML=`<div class="empty danger">${esc(r.error.message)}</div>`;let cs=r.data||[],lessonCount=0,enrollCount=0,studentSet=new Set;for(const c of cs){let ls=(await db.from("lessons").select("id").eq("course_id",c.id)).data||[];lessonCount+=ls.length;let en=(await db.from("enrollments").select("student_id").eq("course_id",c.id)).data||[];enrollCount+=en.length;en.forEach(x=>studentSet.add(x.student_id))}box.innerHTML=`<div class="teacher-head"><div><span class="eyebrow">TEACHER STUDIO</span><h1>Teacher dashboard</h1><p class="muted">Manage courses, videos, publishing, and students.</p></div><button class="primary" onclick="$('ctitle').focus()">+ New course</button></div><div class="stats"><div class="stat"><div class="stat-label">COURSES</div><div class="stat-value">${cs.length}</div></div><div class="stat"><div class="stat-label">LESSONS</div><div class="stat-value">${lessonCount}</div></div><div class="stat"><div class="stat-label">STUDENTS</div><div class="stat-value">${studentSet.size}</div></div><div class="stat"><div class="stat-label">ENROLLMENTS</div><div class="stat-value">${enrollCount}</div></div></div><div class="teacher-grid"><div class="panel"><h2>Create a course</h2><p>Add a title and description, then upload lessons.</p><form id="courseForm"><input id="ctitle" placeholder="Course title" required><textarea id="cdesc" placeholder="Course description"></textarea><button class="primary">Create course</button></form></div><div class="panel"><h2>Your courses</h2>${cs.map(c=>`<div class="course-admin"><div><span class="badge ${c.published?"published":"draft"}">${c.published?"Published":"Draft"}</span><h3>${esc(c.title)}</h3><p class="small">${esc(c.description||"No description")}</p></div><div class="admin-actions"><button onclick="manageCourse('${c.id}')">Manage</button><button onclick="editCourse('${c.id}')">Edit</button><button onclick="togglePublish('${c.id}',${!c.published})">${c.published?"Unpublish":"Publish"}</button><button class="danger-btn" onclick="deleteCourse('${c.id}')">Delete</button></div></div>`).join("")||`<p class="muted">No courses yet.</p>`}</div></div><div class="panel" style="margin-top:18px"><div class="section-title"><h2>Student overview</h2><button class="secondary" onclick="loadTeacherStudents()">Refresh</button></div><div id="studentOverview"><p class="muted">Loading…</p></div></div>`;$("courseForm").onsubmit=async e=>{e.preventDefault();let x=await db.from("courses").insert({title:$("ctitle").value.trim(),description:$("cdesc").value.trim(),teacher_id:user.id,published:false});if(x.error)return toast(x.error.message);toast("Course created.");loadTeacher()};await loadTeacherStudents()}
-window.loadTeacherStudents=async()=>{let box=$("studentOverview");if(!box)return;let r=await db.from("enrollments").select("student_id,course_id,courses(title)");if(r.error)return box.innerHTML=`<p class="danger">${esc(r.error.message)}</p>`;if(!r.data?.length)return box.innerHTML=`<p class="muted">No students have enrolled yet.</p>`;let g={};r.data.forEach(x=>(g[x.student_id]??={courses:[]}).courses.push(x.courses?.title||"Course"));let ids=Object.keys(g),p=(await db.from("profiles").select("id,name").in("id",ids)).data||[];box.innerHTML=`<div class="table-wrap"><table class="table"><thead><tr><th>Student</th><th>Enrollments</th><th>Courses</th></tr></thead><tbody>${ids.map(id=>`<tr><td><b>${esc(p.find(x=>x.id===id)?.name||"Student")}</b></td><td>${g[id].courses.length}</td><td>${g[id].courses.map(esc).join(", ")}</td></tr>`).join("")}</tbody></table></div>`};
+  if (user) {
+    const r = await db.from("profiles").select("*").eq("id", user.id).maybeSingle();
+    profile = r.data || null;
+  }
 
-window.manageCourse=async id=>{let c=(await db.from("courses").select("*").eq("id",id).single()).data,l=(await db.from("lessons").select("*").eq("course_id",id).order("position")).data||[];$("teacherContent").innerHTML=`<button class="back" onclick="loadTeacher()">← Teacher dashboard</button><div class="course-head"><span class="eyebrow">COURSE MANAGEMENT</span><h1>${esc(c.title)}</h1><p class="muted">${esc(c.description||"")}</p><span class="badge ${c.published?"published":"draft"}">${c.published?"Published":"Draft"}</span></div><div class="teacher-grid"><div class="panel"><h2>Add video lesson</h2><p>Upload a video directly to TeachMe storage.</p><form id="lessonForm"><input id="ltitle" placeholder="Lesson title" required><textarea id="ldesc" placeholder="Lesson description"></textarea><label>Video file<input id="lfile" type="file" accept="video/*" required></label><button class="primary">Upload video & add lesson</button></form><p id="uploadStatus" class="muted"></p></div><div class="panel"><h2>Course settings</h2><p>Students can only see published courses.</p><button class="primary" onclick="togglePublish('${id}',${!c.published})">${c.published?"Unpublish course":"Publish course"}</button></div></div><div class="panel" style="margin-top:18px"><h2>Lessons (${l.length})</h2>${l.map((x,i)=>`<div class="course-admin"><div><span class="badge">Lesson ${i+1}</span><h3>${esc(x.title)}</h3><p class="small">${esc(x.description||"")}</p></div><div class="admin-actions"><button onclick="previewLesson('${x.id}')">Preview</button><button class="danger-btn" onclick="deleteLesson('${x.id}','${id}')">Delete</button></div></div>`).join("")||`<p class="muted">No lessons yet.</p>`}</div>`;$("lessonForm").onsubmit=async e=>{e.preventDefault();let f=$("lfile").files[0];if(!f||!f.type.startsWith("video/"))return toast("Choose a video file.");$("uploadStatus").textContent="Uploading video…";let path=`${user.id}/${crypto.randomUUID()}-${f.name.replace(/[^a-zA-Z0-9._-]/g,"_")}`,up=await db.storage.from("course-videos").upload(path,f,{cacheControl:"3600",upsert:false});if(up.error){$("uploadStatus").textContent="";return toast(up.error.message)}let url=db.storage.from("course-videos").getPublicUrl(path).data.publicUrl,ins=await db.from("lessons").insert({course_id:id,title:$("ltitle").value.trim(),description:$("ldesc").value.trim(),video_url:url,position:l.length+1,created_by:user.id});if(ins.error){await db.storage.from("course-videos").remove([path]);$("uploadStatus").textContent="";return toast(ins.error.message)}toast("Video uploaded.");manageCourse(id)}};
+  $("authNav").textContent = user ? "Account" : "Login";
+  $("logoutBtn").hidden = !user;
+  $("teacherNav").hidden = !(profile?.role === "teacher");
+}
 
-window.editCourse=async id=>{let c=(await db.from("courses").select("*").eq("id",id).single()).data;$("teacherContent").innerHTML=`<button class="back" onclick="loadTeacher()">← Teacher dashboard</button><div class="panel" style="max-width:720px"><span class="eyebrow">EDIT COURSE</span><h2>${esc(c.title)}</h2><form id="editForm"><input id="editTitle" value="${esc(c.title)}" required><textarea id="editDesc">${esc(c.description||"")}</textarea><button class="primary">Save changes</button></form></div>`;$("editForm").onsubmit=async e=>{e.preventDefault();let r=await db.from("courses").update({title:$("editTitle").value.trim(),description:$("editDesc").value.trim()}).eq("id",id);if(r.error)return toast(r.error.message);toast("Course updated.");loadTeacher()}};
-window.togglePublish=async(id,v)=>{let r=await db.from("courses").update({published:v}).eq("id",id);if(r.error)return toast(r.error.message);toast(v?"Course published.":"Course unpublished.");loadTeacher()};
-window.deleteCourse=async id=>{if(!confirm("Delete this course? Related records may prevent deletion."))return;let r=await db.from("courses").delete().eq("id",id);if(r.error)return toast(r.error.message);toast("Course deleted.");loadTeacher()};
-window.deleteLesson=async(id,cid)=>{if(!confirm("Delete this lesson?"))return;let r=await db.from("lessons").delete().eq("id",id);if(r.error)return toast(r.error.message);toast("Lesson deleted.");manageCourse(cid)};
-window.previewLesson=async id=>{let l=(await db.from("lessons").select("*").eq("id",id).single()).data,w=window.open("","_blank");if(!w)return toast("Allow pop-ups to preview.");w.document.write(`<body style="margin:30px;font-family:Arial;background:#f6f7fb"><h1>${esc(l.title)}</h1><p>${esc(l.description||"")}</p><video controls autoplay style="width:100%;max-height:75vh;background:#000" src="${esc(l.video_url||"")}"></video></body>`)};
+async function initSupabase() {
+  if (!window.supabase) {
+    toast("Supabase library did not load. Check your internet connection.");
+    return false;
+  }
+  try {
+    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    await refreshAuth();
+    return true;
+  } catch (e) {
+    console.error(e);
+    toast("Could not initialize the classroom database.");
+    return false;
+  }
+}
 
-(async()=>{await refreshAuth();showPage("home")})();
+async function loadCourses() {
+  const list = $("courseList");
+  if (!list) return;
+  if (!db) {
+    list.innerHTML = '<div class="panel"><p class="danger">Database is not connected.</p></div>';
+    return;
+  }
+
+  const q = $("courseSearch")?.value.trim() || "";
+  let req = db.from("courses").select("*").eq("published", true).order("created_at",{ascending:false});
+  if (q) req = req.ilike("title", `%${q}%`);
+
+  const {data,error} = await req;
+  if (error) {
+    list.innerHTML = `<div class="panel"><p class="danger">${esc(error.message)}</p></div>`;
+    return;
+  }
+
+  list.innerHTML = (data || []).map(c => `
+    <article class="card">
+      <div class="eyebrow">COURSE</div>
+      <h3>${esc(c.title)}</h3>
+      <p class="muted">${esc(c.description || "No description.")}</p>
+      <button type="button" class="primary" data-action="open-course" data-id="${esc(c.id)}">Open course</button>
+    </article>
+  `).join("") || '<div class="panel"><p>No published courses yet.</p></div>';
+}
+
+async function openCourse(id) {
+  if (!db) return toast("Database is not connected.");
+  const {data,error} = await db.from("courses").select("*").eq("id",id).single();
+  if (error) return toast(error.message);
+  currentCourse = data;
+
+  const lessonsResult = await db.from("lessons").select("*").eq("course_id",id).order("position");
+  if (lessonsResult.error) return toast(lessonsResult.error.message);
+
+  let enrolled = false;
+  if (user) {
+    const r = await db.from("enrollments").select("id").eq("course_id",id).eq("student_id",user.id).maybeSingle();
+    enrolled = !!r.data;
+  }
+
+  $("courseDetails").innerHTML = `
+    <div class="panel">
+      <div class="eyebrow">COURSE</div>
+      <h1>${esc(data.title)}</h1>
+      <p class="muted">${esc(data.description || "")}</p>
+      <div class="actions">
+        ${enrolled
+          ? '<span class="success"><b>Enrolled ✓</b></span>'
+          : `<button type="button" class="primary" data-action="enroll" data-id="${esc(id)}">Enroll in course</button>`}
+      </div>
+    </div>
+    <div style="margin-top:20px">
+      ${(lessonsResult.data || []).map((l,i) => `
+        <article class="lesson">
+          <h3>${i+1}. ${esc(l.title)}</h3>
+          <p class="muted">${esc(l.description || "")}</p>
+          ${l.video_url
+            ? `<video controls preload="metadata" src="${esc(l.video_url)}" data-lesson="${esc(l.id)}"></video>`
+            : '<p class="muted">No video uploaded.</p>'}
+          ${enrolled ? `<div class="actions"><button type="button" data-action="mark-progress" data-id="${esc(l.id)}">Mark complete</button></div>` : ""}
+        </article>
+      `).join("") || '<div class="panel"><p>No lessons yet.</p></div>'}
+    </div>
+  `;
+  showPage("courseView");
+}
+
+async function enroll(id) {
+  if (!user) {
+    showPage("auth");
+    toast("Please log in first.");
+    return;
+  }
+  const {error} = await db.from("enrollments").insert({course_id:id,student_id:user.id});
+  if (error) return toast(error.message);
+  toast("You are enrolled.");
+  openCourse(id);
+}
+
+async function markProgress(lessonId) {
+  if (!user) return toast("Please log in first.");
+  const {error} = await db.from("progress").upsert({
+    student_id:user.id,
+    lesson_id:lessonId,
+    completed:true,
+    completed_at:new Date().toISOString()
+  }, {onConflict:"student_id,lesson_id"});
+  if (error) return toast(error.message);
+  toast("Progress saved ✓");
+  loadDashboard();
+}
+
+async function loadDashboard() {
+  const box = $("dashboardContent");
+  if (!box) return;
+  if (!user) {
+    box.innerHTML = `<div class="panel"><p>Please log in to see your learning.</p><button type="button" class="primary" data-page="auth">Login</button></div>`;
+    return;
+  }
+
+  const {data,error} = await db.from("enrollments")
+    .select("course_id,courses(id,title,description)")
+    .eq("student_id",user.id);
+
+  if (error) return box.innerHTML = `<div class="panel"><p class="danger">${esc(error.message)}</p></div>`;
+
+  const rows = [];
+  for (const e of (data || [])) {
+    const course = e.courses;
+    const lessons = await db.from("lessons").select("id").eq("course_id",e.course_id);
+    const ids = (lessons.data || []).map(x=>x.id);
+    let completed = 0;
+    if (ids.length) {
+      const p = await db.from("progress").select("lesson_id").eq("student_id",user.id).eq("completed",true).in("lesson_id",ids);
+      completed = (p.data || []).length;
+    }
+    const percent = ids.length ? Math.round(completed / ids.length * 100) : 0;
+    rows.push(`
+      <article class="card">
+        <h3>${esc(course.title)}</h3>
+        <p class="muted">${esc(course.description || "")}</p>
+        <p><b>${percent}% complete</b></p>
+        <div class="actions"><button type="button" class="primary" data-action="open-course" data-id="${esc(course.id)}">Continue</button></div>
+      </article>`);
+  }
+
+  box.innerHTML = rows.join("") || '<div class="panel"><p>You are not enrolled in any courses yet.</p><button type="button" data-page="courses">Browse courses</button></div>';
+}
+
+async function loadTeacher() {
+  const box = $("teacherContent");
+  if (!box) return;
+  if (!user || profile?.role !== "teacher") {
+    box.innerHTML = '<div class="panel"><p class="danger">Teacher access required.</p></div>';
+    return;
+  }
+
+  const {data:courses,error} = await db.from("courses").select("*").order("created_at",{ascending:false});
+  if (error) return box.innerHTML = `<div class="panel"><p class="danger">${esc(error.message)}</p></div>`;
+
+  let students = 0, enrollments = 0, lessons = 0;
+  const er = await db.from("enrollments").select("student_id");
+  enrollments = er.data?.length || 0;
+  students = new Set((er.data || []).map(x=>x.student_id)).size;
+  const lr = await db.from("lessons").select("id");
+  lessons = lr.data?.length || 0;
+
+  box.innerHTML = `
+    <div class="stats">
+      <div class="stat"><span>Courses</span><strong>${courses?.length||0}</strong></div>
+      <div class="stat"><span>Lessons</span><strong>${lessons}</strong></div>
+      <div class="stat"><span>Students</span><strong>${students}</strong></div>
+      <div class="stat"><span>Enrollments</span><strong>${enrollments}</strong></div>
+    </div>
+    <div class="panel">
+      <h3>Create a course</h3>
+      <form id="courseForm">
+        <input id="ctitle" required placeholder="Course title">
+        <textarea id="cdesc" placeholder="Course description"></textarea>
+        <button type="submit" class="primary">Create course</button>
+      </form>
+    </div>
+    <div class="grid">
+      ${(courses || []).map(c=>`
+        <article class="card">
+          <div class="eyebrow">${c.published ? "PUBLISHED" : "DRAFT"}</div>
+          <h3>${esc(c.title)}</h3>
+          <p class="muted">${esc(c.description || "")}</p>
+          <div class="actions">
+            <button type="button" data-action="manage-course" data-id="${esc(c.id)}">Manage</button>
+            <button type="button" data-action="toggle-publish" data-id="${esc(c.id)}" data-value="${c.published ? "false":"true"}">${c.published?"Unpublish":"Publish"}</button>
+          </div>
+        </article>`).join("") || '<div class="panel"><p>No courses yet.</p></div>'}
+    </div>
+  `;
+
+  $("courseForm").addEventListener("submit", createCourse);
+}
+
+async function createCourse(e) {
+  e.preventDefault();
+  const title = $("ctitle").value.trim();
+  const description = $("cdesc").value.trim();
+  if (!title) return toast("Enter a course title.");
+
+  const {error} = await db.from("courses").insert({
+    title, description, teacher_id:user.id, published:false
+  });
+  if (error) return toast(error.message);
+  toast("Course created ✓");
+  loadTeacher();
+}
+
+async function manageCourse(id) {
+  const {data:c,error} = await db.from("courses").select("*").eq("id",id).single();
+  if (error) return toast(error.message);
+  const {data:lessons,error:le} = await db.from("lessons").select("*").eq("course_id",id).order("position");
+  if (le) return toast(le.message);
+
+  $("teacherContent").innerHTML = `
+    <button type="button" class="link" data-action="teacher-home">← Teacher dashboard</button>
+    <div class="panel">
+      <div class="eyebrow">${c.published?"PUBLISHED":"DRAFT"}</div>
+      <h2>${esc(c.title)}</h2>
+      <p class="muted">${esc(c.description || "")}</p>
+      <div class="actions">
+        <button type="button" data-action="toggle-publish" data-id="${esc(id)}" data-value="${c.published?"false":"true"}">${c.published?"Unpublish":"Publish"}</button>
+      </div>
+      <hr style="border:0;border-top:1px solid #e5e7eb;margin:22px 0">
+      <h3>Add video lesson</h3>
+      <form id="lessonForm">
+        <input id="ltitle" required placeholder="Lesson title">
+        <textarea id="ldesc" placeholder="Lesson description"></textarea>
+        <label>Video file<input id="lfile" type="file" accept="video/*" required></label>
+        <button type="submit" class="primary">Upload video & create lesson</button>
+        <div id="uploadStatus" class="muted"></div>
+      </form>
+    </div>
+    <div style="margin-top:18px">
+      ${(lessons || []).map((l,i)=>`
+        <article class="lesson">
+          <h3>${i+1}. ${esc(l.title)}</h3>
+          <p class="small">${l.video_url?"Video uploaded ✓":"No video"}</p>
+          ${l.video_url?`<video controls preload="metadata" src="${esc(l.video_url)}"></video>`:""}
+        </article>`).join("") || '<div class="panel"><p>No lessons yet.</p></div>'}
+    </div>
+  `;
+
+  $("lessonForm").addEventListener("submit", e => uploadLesson(e,id,lessons?.length||0));
+}
+
+async function uploadLesson(e, courseId, lessonCount) {
+  e.preventDefault();
+  const file = $("lfile").files[0];
+  if (!file) return toast("Choose a video file.");
+  if (!file.type.startsWith("video/")) return toast("Please choose a video file.");
+
+  $("uploadStatus").textContent = "Uploading video…";
+  const safe = file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+  const path = `${user.id}/${crypto.randomUUID()}-${safe}`;
+
+  const up = await db.storage.from("course-videos").upload(path,file,{cacheControl:"3600",upsert:false});
+  if (up.error) {
+    $("uploadStatus").textContent = "";
+    return toast(up.error.message);
+  }
+
+  const pub = db.storage.from("course-videos").getPublicUrl(path).data.publicUrl;
+  const ins = await db.from("lessons").insert({
+    course_id:courseId,
+    title:$("ltitle").value.trim(),
+    description:$("ldesc").value.trim(),
+    video_url:pub,
+    position:lessonCount+1,
+    created_by:user.id
+  });
+
+  if (ins.error) {
+    await db.storage.from("course-videos").remove([path]);
+    $("uploadStatus").textContent = "";
+    return toast(ins.error.message);
+  }
+
+  toast("Video uploaded ✓");
+  manageCourse(courseId);
+}
+
+async function togglePublish(id,value) {
+  const {error} = await db.from("courses").update({published:value}).eq("id",id);
+  if (error) return toast(error.message);
+  toast(value ? "Course published ✓" : "Course unpublished.");
+  if (profile?.role === "teacher") loadTeacher();
+}
+
+async function loginOrSignup() {
+  const username = $("username").value.trim();
+  const password = $("password").value;
+  if (!username || !password) return toast("Enter a username and password.");
+
+  if (authMode === "signup") {
+    if (username.toLowerCase() === TEACHER_USERNAME.toLowerCase()) return toast("That username is reserved.");
+
+    const realName = $("realName").value.trim() || username;
+    const {data,error} = await db.auth.signUp({
+      email:syntheticEmail(username),
+      password,
+      options:{data:{display_name:username,real_name:realName}}
+    });
+    if (error) return toast(error.message);
+
+    if (data.user) {
+      const r = await db.from("profiles").upsert({
+        id:data.user.id,name:realName,role:"student"
+      });
+      if (r.error) console.warn(r.error);
+      await refreshAuth();
+      toast("Account created ✓");
+      showPage("courses");
+    }
+  } else {
+    const {error} = await db.auth.signInWithPassword({
+      email:syntheticEmail(username), password
+    });
+    if (error) return toast(error.message);
+    await refreshAuth();
+    toast("Welcome back ✓");
+    showPage(profile?.role === "teacher" ? "teacher" : "courses");
+  }
+}
+
+function toggleAuthMode() {
+  authMode = authMode === "login" ? "signup" : "login";
+  $("authTitle").textContent = authMode === "login" ? "Login" : "Create student account";
+  $("authSubmit").textContent = authMode === "login" ? "Login" : "Create account";
+  $("toggleAuth").textContent = authMode === "login" ? "Create a student account" : "Back to login";
+  $("realNameWrap").hidden = authMode === "login";
+  $("authMessage").textContent = authMode === "login"
+    ? "Use your TeachMe username and password."
+    : "Choose a username and enter your real name for certificates.";
+}
+
+document.addEventListener("click", async e => {
+  const pageButton = e.target.closest("[data-page]");
+  if (pageButton) {
+    e.preventDefault();
+    showPage(pageButton.dataset.page);
+    return;
+  }
+
+  const action = e.target.closest("[data-action]");
+  if (!action) return;
+
+  e.preventDefault();
+  const type = action.dataset.action;
+  try {
+    if (type === "open-course") await openCourse(action.dataset.id);
+    else if (type === "enroll") await enroll(action.dataset.id);
+    else if (type === "mark-progress") await markProgress(action.dataset.id);
+    else if (type === "manage-course") await manageCourse(action.dataset.id);
+    else if (type === "toggle-publish") await togglePublish(action.dataset.id, action.dataset.value === "true");
+    else if (type === "teacher-home") await loadTeacher();
+  } catch (err) {
+    console.error(err);
+    toast(err?.message || "Something went wrong.");
+  }
+});
+
+document.addEventListener("DOMContentLoaded", async () => {
+  $("authSubmit").addEventListener("click", loginOrSignup);
+  $("toggleAuth").addEventListener("click", toggleAuthMode);
+  $("logoutBtn").addEventListener("click", async () => {
+    if (!db) return;
+    await db.auth.signOut();
+    await refreshAuth();
+    showPage("home");
+    toast("Logged out.");
+  });
+  $("courseSearch").addEventListener("input", loadCourses);
+
+  await initSupabase();
+  showPage("home");
+});
+})();
