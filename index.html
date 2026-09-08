@@ -1,33 +1,33 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TeachMe</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TeachMe — Online Classroom</title><meta name="theme-color" content="#4f46e5">
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-<header>
-  <div class="brand">TeachMe</div>
+<header class="topbar">
+  <div class="brand" data-page="home"><span class="logo">T</span><span>TeachMe</span></div>
   <nav>
-    <button data-page="home">Home</button>
-    <button data-page="courses">Courses</button>
-    <button data-page="dashboard">Dashboard</button>
-    <button id="teacherNav" data-page="teacher" hidden>Teacher</button>
-    <button id="authNav" data-page="auth">Login</button>
-    <button id="logoutBtn" hidden>Logout</button>
+    <button data-page="home">Home</button><button data-page="courses">Courses</button>
+    <button data-page="dashboard">My Learning</button><button id="teacherNav" data-page="teacher" hidden>Teacher Studio</button>
+    <button id="authNav" class="login" data-page="auth">Login</button><button id="logoutBtn" hidden>Log out</button>
   </nav>
 </header>
 <main>
-<section id="home" class="page active"><div class="hero"><h1>Learn. Practice. Achieve.</h1><p>Online classroom learning with your progress saved securely.</p><button class="primary" data-page="courses">Browse courses</button></div></section>
-<section id="courses" class="page"><h2>Courses</h2><input id="courseSearch" placeholder="Search courses..."><div id="courseList" class="grid"></div></section>
-<section id="dashboard" class="page"><h2>My Dashboard</h2><div id="dashboardContent"></div></section>
-<section id="teacher" class="page"><h2>Teacher Dashboard</h2><div id="teacherContent"></div></section>
-<section id="auth" class="page"><div class="authbox"><h2 id="authTitle">Login</h2><div id="authMessage"></div><input id="username" autocomplete="username" placeholder="Username"><input id="password" type="password" autocomplete="current-password" placeholder="Password"><button id="authSubmit" class="primary">Login</button><p><button id="toggleAuth" class="link">Create a student account</button></p></div></section>
-<section id="courseView" class="page"><button class="link" data-page="courses">← Back to courses</button><div id="courseDetails"></div></section>
-</main>
-<div id="toast"></div>
-<script src="script.js"></script>
-</body>
-</html>
+<section id="home" class="page active">
+ <div class="hero"><div><span class="eyebrow">ONLINE LEARNING PLATFORM</span>
+ <h1>Learn something new.<br><span>Build your future.</span></h1>
+ <p>Watch lessons, track your progress, and learn at your own pace with TeachMe.</p>
+ <div class="actions"><button class="primary big" data-page="courses">Explore courses</button><button class="secondary big" data-page="dashboard">My learning</button></div></div>
+ <div class="hero-visual"><div class="window"><div class="dots">● ● ●</div><div class="line wide"></div><div class="line"></div><div class="bar"><i></i></div><div class="tiles"><b></b><b></b><b></b></div></div></div></div>
+ <div class="features"><article><strong>▶</strong><h3>Video lessons</h3><p>Learn from teacher-uploaded lessons on any device.</p></article><article><strong>✓</strong><h3>Track progress</h3><p>Keep your completed lessons and learning journey organized.</p></article><article><strong>↗</strong><h3>Learn anywhere</h3><p>Your courses and progress are stored online and synced.</p></article></div>
+</section>
+<section id="courses" class="page"><div class="heading"><div><span class="eyebrow">LEARNING LIBRARY</span><h2>Explore courses</h2><p>Find a course and start learning.</p></div><input id="courseSearch" class="search" placeholder="Search courses..."></div><div id="courseList" class="grid"></div></section>
+<section id="dashboard" class="page"><div class="heading"><div><span class="eyebrow">YOUR SPACE</span><h2>My learning</h2><p>Continue where you left off.</p></div></div><div id="dashboardContent"></div></section>
+<section id="teacher" class="page"><div id="teacherContent"></div></section>
+<section id="auth" class="page"><div class="auth"><div class="auth-copy"><span class="eyebrow">WELCOME TO TEACHME</span><h1>Your classroom,<br>online.</h1><p>Sign in to continue learning, or create a student account in seconds.</p></div><div class="authbox"><span class="eyebrow">ACCOUNT</span><h2 id="authTitle">Login</h2><p id="authSub" class="muted">Welcome back. Enter your account details.</p><div id="authMessage"></div><label>Username<input id="username" autocomplete="username" placeholder="Your username"></label><label>Password<input id="password" type="password" autocomplete="current-password" placeholder="Your password"></label><label id="realNameWrap" hidden>Real name <small>(used for certificates)</small><input id="realName" placeholder="Your full name"></label><button id="authSubmit" class="primary full">Login</button><button id="toggleAuth" class="link">Create a student account</button></div></div></section>
+<section id="courseView" class="page"><button class="back" data-page="courses">← Back to courses</button><div id="courseDetails"></div></section>
+</main><div id="toast"></div><script src="script.js"></script>
+</body></html>
