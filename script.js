@@ -1,6 +1,25 @@
 (() => {
 "use strict";
 
+window.addEventListener("error", e => {
+  console.error("TeachMe error:", e.error || e.message);
+  showFatalBanner((e.error && e.error.message) || e.message || "A script error occurred.");
+});
+window.addEventListener("unhandledrejection", e => {
+  console.error("TeachMe promise error:", e.reason);
+  showFatalBanner((e.reason && e.reason.message) || String(e.reason) || "A background request failed.");
+});
+function showFatalBanner(msg) {
+  let el = document.getElementById("fatalBanner");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "fatalBanner";
+    el.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:999;background:#b42318;color:#fff;padding:12px 16px;font:14px/1.4 Inter,Arial,sans-serif;text-align:center";
+    document.body.prepend(el);
+  }
+  el.textContent = "Something went wrong: " + msg + " (check the browser console for details)";
+}
+
 const SUPABASE_URL = "https://yaomfytqplxazovmpsir.supabase.co";
 const SUPABASE_KEY = "sb_publishable_UNSBaO_CUu4YMBJ_gklv5g_9hcWfTdE";
 const TEACHER_USERNAME = "TeachMe";
