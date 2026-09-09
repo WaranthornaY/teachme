@@ -352,8 +352,7 @@ async function uploadLesson(e, courseId, lessonCount) {
     title:$("ltitle").value.trim(),
     description:$("ldesc").value.trim(),
     video_url:pub,
-    position:lessonCount+1,
-    created_by:user.id
+    position:lessonCount+1
   });
 
   if (ins.error) {
