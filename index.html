@@ -8,66 +8,27 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 </head>
 <body>
-<header>
-  <div class="brand">TeachMe</div>
-  <nav>
-    <button type="button" data-page="home">Home</button>
-    <button type="button" data-page="courses">Courses</button>
-    <button type="button" data-page="dashboard">My Learning</button>
-    <button type="button" id="teacherNav" data-page="teacher" hidden>Teacher Studio</button>
-    <button type="button" id="authNav" data-page="auth">Login</button>
-    <button type="button" id="logoutBtn" hidden>Logout</button>
+<header class="topbar">
+  <div class="brand" data-page="home">Teach<span>Me</span></div>
+  <nav class="nav" id="nav">
+    <button data-page="home" class="navbtn">Home</button>
+    <button data-page="courses" class="navbtn">Courses</button>
+    <button data-page="dashboard" class="navbtn authOnly" hidden>My Learning</button>
+    <button data-page="teacher" class="navbtn teacherOnly" hidden>Teacher Studio</button>
   </nav>
+  <div class="navRight">
+    <button data-page="account" class="navbtn authOnly" id="accountNavBtn" hidden>
+      <span class="miniAvatar" id="miniAvatar"></span>
+      <span id="navName">Account</span>
+    </button>
+    <button data-page="auth" class="btn ghost small guestOnly" id="loginNavBtn">Login</button>
+    <button class="btn ghost small authOnly" id="logoutBtn" hidden>Log out</button>
+  </div>
 </header>
 
-<main>
-<section id="home" class="page active">
-  <div class="hero">
-    <div class="badge">ONLINE CLASSROOM</div>
-    <h1>Learn. Practice. Achieve.</h1>
-    <p>Courses, video lessons and progress tracking in one place.</p>
-    <div class="row center">
-      <button type="button" class="primary" data-page="courses">Browse courses</button>
-      <button type="button" data-page="auth">Student login</button>
-    </div>
-  </div>
-</section>
+<main id="app"></main>
 
-<section id="courses" class="page">
-  <div class="section-head"><div><div class="eyebrow">LEARNING</div><h2>Courses</h2></div></div>
-  <input id="courseSearch" class="search" placeholder="Search courses..." autocomplete="off">
-  <div id="courseList" class="grid"></div>
-</section>
-
-<section id="dashboard" class="page">
-  <div class="section-head"><div><div class="eyebrow">STUDENT</div><h2>My Learning</h2></div></div>
-  <div id="dashboardContent"></div>
-</section>
-
-<section id="teacher" class="page">
-  <div class="section-head"><div><div class="eyebrow">TEACHER</div><h2>Teacher Studio</h2></div></div>
-  <div id="teacherContent"></div>
-</section>
-
-<section id="auth" class="page">
-  <div class="authbox">
-    <div class="eyebrow">ACCOUNT</div>
-    <h2 id="authTitle">Login</h2>
-    <p id="authMessage" class="muted">Use your TeachMe username and password.</p>
-    <label>Username<input id="username" autocomplete="username" placeholder="Username"></label>
-    <label>Password<input id="password" type="password" autocomplete="current-password" placeholder="Password"></label>
-    <label id="realNameWrap" hidden>Real name for certificate<input id="realName" placeholder="Your real name"></label>
-    <button type="button" id="authSubmit" class="primary">Login</button>
-    <button type="button" id="toggleAuth" class="link">Create a student account</button>
-  </div>
-</section>
-
-<section id="courseView" class="page">
-  <button type="button" class="link" data-page="courses">← Back to courses</button>
-  <div id="courseDetails"></div>
-</section>
-</main>
-<div id="toast" role="status"></div>
-<script src="script.js" defer></script>
+<div id="toast" class="toast" hidden></div>
+<canvas id="certCanvas" width="1200" height="850" hidden></canvas>
 </body>
 </html>
