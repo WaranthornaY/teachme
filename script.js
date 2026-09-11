@@ -921,7 +921,7 @@ const actions = {
   selectOption: (el) => selectOption(el.dataset.question, el.dataset.option),
   submitQuiz: (el) => submitQuiz(el.dataset.id),
   retakeQuiz: (el) => retakeQuiz(el.dataset.id),
-  saveAccountName, changePassword,
+  saveAccountName, changePassword, logout,
 };
 
 document.addEventListener("click", e => {
